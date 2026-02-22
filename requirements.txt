@@ -1,8 +1,22 @@
+# Core
 flask==3.0.3
+flask-login==0.6.3
+flask-bcrypt==1.0.1
 flask-sqlalchemy==3.1.1
+SQLAlchemy==2.0.36
+
+# Database drivers
+# SQLite is built-in to Python (used locally)
+# psycopg2-binary is the PostgreSQL driver for Render
+psycopg2-binary==2.9.10
+
+# HTTP + AI
 requests==2.32.3
-python-dotenv==1.0.1
-Pillow==10.4.0
-PyPDF2==3.0.1
+
+# File extraction
+Pillow==11.0.0
 python-docx==1.1.2
-gunicorn
+openpyxl==3.1.5
+
+# WSGI server for production (Render uses gunicorn)
+gunicorn==23.0.0
