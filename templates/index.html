@@ -531,6 +531,7 @@ textarea.form-input{resize:vertical;min-height:90px}
   <div style="padding:20px;background:var(--white)">
     <button class="btn btn-primary btn-full" style="padding:16px;font-size:.95rem" onclick="go('signup')">Create Free Account</button>
     <button class="btn btn-ghost btn-full" style="padding:14px;margin-top:10px" onclick="go('signin')">Sign In</button>
+    <p style="font-size:.72rem;color:var(--subtle);text-align:center;margin-top:16px"><a href="/terms" target="_blank" style="color:var(--muted);font-weight:600">Terms of Service</a> &nbsp;·&nbsp; <a href="/privacy" target="_blank" style="color:var(--muted);font-weight:600">Privacy Policy</a></p>
   </div>
 </div>
 
@@ -545,6 +546,7 @@ textarea.form-input{resize:vertical;min-height:90px}
     <div class="form-group"><label class="form-label">Confirm Password</label><input id="su-conf" class="form-input" type="password" placeholder="Repeat password"></div>
     <button id="su-btn" class="btn btn-primary btn-full" style="padding:15px" onclick="doRegister()">Create Account</button>
     <p class="auth-link">Already have an account? <a href="#" onclick="go('signin')">Sign In</a></p>
+    <p style="font-size:.72rem;color:var(--subtle);text-align:center;margin-top:16px;line-height:1.6">By creating an account you agree to our<br><a href="/terms" target="_blank" style="color:var(--muted);font-weight:600">Terms of Service</a> &amp; <a href="/privacy" target="_blank" style="color:var(--muted);font-weight:600">Privacy Policy</a></p>
   </div></div>
 </div>
 
@@ -560,6 +562,7 @@ textarea.form-input{resize:vertical;min-height:90px}
     </div>
     <button id="si-btn" class="btn btn-primary btn-full" style="padding:15px" onclick="doLogin()">Sign In</button>
     <p class="auth-link">New here? <a href="#" onclick="go('signup')">Create Account</a></p>
+    <p style="font-size:.72rem;color:var(--subtle);text-align:center;margin-top:16px"><a href="/terms" target="_blank" style="color:var(--muted);font-weight:600">Terms</a> &nbsp;·&nbsp; <a href="/privacy" target="_blank" style="color:var(--muted);font-weight:600">Privacy</a></p>
   </div></div>
 </div>
 
@@ -581,11 +584,30 @@ textarea.form-input{resize:vertical;min-height:90px}
       </div>
       <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px">
         <img src="/static/logo.png" style="width:56px;height:56px;object-fit:contain;filter:drop-shadow(0 4px 12px rgba(0,0,0,.25));animation:mascotFloat 3s ease-in-out infinite">
-        <span class="badge badge-gold" id="d-streak-badge">🔥 1 day</span>
+        <span class="badge badge-gold" id="d-streak-badge-welcome" data-streak>🔥 1 day</span>
         <p id="d-rank-badge" style="font-size:.7rem;margin-top:2px;font-weight:700;opacity:.9">Beginner</p>
         <p id="d-level-badge" style="font-size:.65rem;opacity:.7">Level 1</p>
       </div>
     </div>
+    <!-- Daily Streak Progress Card -->
+    <div class="card" style="margin-bottom:14px;padding:16px 18px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="font-size:1.1rem">🔥</span>
+          <span style="font-size:.85rem;font-weight:700;color:var(--text)">Daily Streak</span>
+        </div>
+        <span id="d-streak-badge" data-streak style="font-size:.78rem;font-weight:700;background:#FFF7ED;color:#C2410C;padding:4px 10px;border-radius:20px">🔥 1 day</span>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+        <span id="streak-progress-label" style="font-size:.72rem;color:var(--muted)">0/5 activities today</span>
+        <span style="font-size:.7rem;color:var(--muted)">5 to secure</span>
+      </div>
+      <div style="height:7px;background:var(--border);border-radius:8px;overflow:hidden">
+        <div id="streak-progress-bar" style="height:100%;background:linear-gradient(90deg,#F97316,#EF4444);border-radius:8px;width:0%;transition:width .5s ease"></div>
+      </div>
+      <p style="font-size:.7rem;color:var(--subtle);margin-top:6px;text-align:center">Upload files, do homework, or complete quizzes to secure today's streak</p>
+    </div>
+
     <!-- Review due banner -->
     <div class="review-banner" id="reviewBanner" style="display:none" onclick="startAdaptiveQuiz()">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
@@ -874,7 +896,7 @@ textarea.form-input{resize:vertical;min-height:90px}
       <div class="card"><p style="font-size:.8rem;font-weight:600;margin-bottom:12px">Saved for Offline</p><div id="savedQuizList"><div class="loader" style="padding:16px"><div class="loader-dot"></div><div class="loader-dot"></div><div class="loader-dot"></div></div></div></div>
     </div>
     <div class="settings-section"><p class="settings-label">About</p>
-      <div class="card" style="text-align:center;padding:28px"><img src="/static/logo.png" style="width:64px;height:64px;object-fit:contain;margin-bottom:10px;filter:drop-shadow(0 4px 12px rgba(124,58,237,.25))"><div class="logo" style="font-size:1.4rem;margin-bottom:6px">Brainliant</div><p style="font-size:.75rem;color:var(--muted)">AI-Powered Learning Platform</p><p style="font-size:.7rem;color:var(--subtle);margin-top:4px">Powered by Cohere command-a-03-2025</p></div>
+      <div class="card" style="text-align:center;padding:28px"><img src="/static/logo.png" style="width:64px;height:64px;object-fit:contain;margin-bottom:10px;filter:drop-shadow(0 4px 12px rgba(124,58,237,.25))"><div class="logo" style="font-size:1.4rem;margin-bottom:6px">Brainliant</div><p style="font-size:.75rem;color:var(--muted)">AI-Powered Learning Platform</p><p style="font-size:.7rem;color:var(--subtle);margin-top:4px">Powered by Cohere command-a-03-2025</p><div style="margin-top:16px;display:flex;justify-content:center;gap:16px"><a href="/terms" target="_blank" style="font-size:.72rem;color:var(--blue);font-weight:600;text-decoration:none">Terms of Service</a><a href="/privacy" target="_blank" style="font-size:.72rem;color:var(--blue);font-weight:600;text-decoration:none">Privacy Policy</a></div></div>
     </div>
   </div>
   <div class="bottom-nav">
@@ -886,6 +908,49 @@ textarea.form-input{resize:vertical;min-height:90px}
 </div>
 
 </div><!-- #app -->
+
+<!-- ══════════ DAILY STREAK SECURED OVERLAY ══════════ -->
+<div id="daily-secured-overlay" style="
+  display:none;position:fixed;inset:0;z-index:9999;
+  background:#fff;
+  flex-direction:column;align-items:center;justify-content:center;
+  padding:40px 24px;text-align:center;">
+  <img src="/static/logo.png" alt="Brainliant" style="
+    width:96px;height:96px;object-fit:contain;margin-bottom:28px;
+    filter:drop-shadow(0 6px 20px rgba(37,99,235,.22));
+    animation:mascotFloat 3s ease-in-out infinite;">
+  <div style="font-size:2.2rem;font-weight:900;letter-spacing:-.5px;color:#0F172A;line-height:1.1;margin-bottom:10px">
+    Your daily streak<br>is secured!
+  </div>
+  <div style="font-size:1.05rem;color:#64748B;font-weight:500;margin-bottom:28px;line-height:1.5">
+    Come back tomorrow to keep your streak alive.
+  </div>
+  <div id="dso-streak" style="
+    background:linear-gradient(135deg,#F97316,#EF4444);
+    color:#fff;font-size:1.1rem;font-weight:800;
+    padding:12px 28px;border-radius:50px;letter-spacing:-.2px;
+    margin-bottom:32px;box-shadow:0 4px 18px rgba(239,68,68,.28)">
+    🔥 <span id="dso-streak-num">1</span> Day Streak
+  </div>
+  <p style="font-size:.8rem;color:#94A3B8;margin-bottom:24px">
+    You've completed all 5 activities for today. Great work!
+  </p>
+  <div style="display:flex;flex-direction:column;gap:10px;width:100%;max-width:280px">
+    <button onclick="closeDailySecured()" style="
+      background:#2563EB;color:#fff;border:none;
+      padding:14px 24px;border-radius:12px;font-size:.95rem;font-weight:700;
+      cursor:pointer;font-family:inherit;">
+      Continue Exploring
+    </button>
+    <button onclick="go('dashboard');closeDailySecured()" style="
+      background:transparent;color:#64748B;border:1.5px solid #E2E8F0;
+      padding:12px 24px;border-radius:12px;font-size:.88rem;font-weight:600;
+      cursor:pointer;font-family:inherit;">
+      Go to Dashboard
+    </button>
+  </div>
+</div>
+
 <script>
 // ═══════════════════════════════════════════════════
 // STATE
@@ -898,10 +963,65 @@ let S={
   timerInt:null, timerSec:0, quizStartTime:null,
   files:[], fileText:'', outputTab:'quiz',
   lbTab:'global', eli5:false,
-  topicResults:[], // [{topic,correct,total}]
+  topicResults:[],
   cameraStream:null, cameraTarget:null,
-  currentQuizTitle:''
+  currentQuizTitle:'',
+  // Daily activity tracking
+  dailyStatus:{files_uploaded:0, hw_images:0, quizzes_done:0, total_today:0, streak_secured:false, daily_goal:5, streak:1}
 };
+
+// ─── Daily streak helpers ─────────────────────────────────────────────────────
+function updateDailyStatus(ds){
+  if(!ds) return;
+  S.dailyStatus={...S.dailyStatus,...ds};
+  if(S.user) S.user.streak = ds.streak || S.user.streak;
+  renderStreakProgress();
+  if(ds.streak_secured && !S.dailyStatus._shownToday){
+    S.dailyStatus._shownToday = true;
+    setTimeout(()=>showDailySecured(), 800);
+  }
+}
+
+function renderStreakProgress(){
+  const ds = S.dailyStatus;
+  const pct = Math.min(100, Math.round((ds.total_today||0) / (ds.daily_goal||5) * 100));
+  // Update streak badge everywhere
+  const streak = ds.streak || S.user?.streak || 1;
+  document.querySelectorAll('[data-streak]').forEach(el => {
+    el.textContent = '🔥 ' + streak + ' day' + (streak!==1?'s':'');
+  });
+  // Update progress bar if on dashboard
+  const spBar = document.getElementById('streak-progress-bar');
+  const spLbl = document.getElementById('streak-progress-label');
+  if(spBar) spBar.style.width = pct + '%';
+  if(spLbl) spLbl.textContent = (ds.total_today||0) + '/' + (ds.daily_goal||5) + ' activities today';
+}
+
+function showDailySecured(){
+  const ov = document.getElementById('daily-secured-overlay');
+  if(!ov) return;
+  const streak = S.dailyStatus.streak || S.user?.streak || 1;
+  const num = document.getElementById('dso-streak-num');
+  if(num) num.textContent = streak;
+  ov.style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+  // Update streak badge in overlay too
+  if(S.user) setText('d-streak-badge', '🔥 '+streak+' day'+(streak!==1?'s':''));
+}
+
+function closeDailySecured(){
+  const ov = document.getElementById('daily-secured-overlay');
+  if(ov){ ov.style.display = 'none'; document.body.style.overflow = '';}
+}
+
+// Load daily status on init
+async function loadDailyStatus(){
+  if(!S.user) return;
+  try{
+    const r = await fetch('/user/daily-status', {credentials:'include'});
+    if(r.ok){ const d = await r.json(); S.dailyStatus = {...S.dailyStatus,...d}; renderStreakProgress(); }
+  }catch{}
+}
 
 // ═══════════════════════════════════════════════════
 // ROUTING
@@ -927,8 +1047,8 @@ function go(page){
 async function init(){
   try{const r=await fetch('/stats');const d=await r.json();animCount('ls-users',d.users);animCount('ls-q',d.quizzes);animCount('ls-f',d.files)}catch{}
   try{
-    const r=await fetch('/auth/check');const d=await r.json();
-    if(d.authenticated&&d.user){S.user=d.user;hideSplash();go('dashboard');return}
+    const r=await fetch('/auth/check',{credentials:'include'});const d=await r.json();
+    if(d.authenticated&&d.user){S.user=d.user;hideSplash();go('dashboard');loadDailyStatus();return}
   }catch{}
   hideSplash();go('landing');
 }
@@ -954,8 +1074,8 @@ async function doLogin(){
   catch(e){toast(e.message||'Invalid credentials');shake('si-pass')}finally{btnReset(btn,'Sign In')}
 }
 async function doLogout(){
-  try{await fetch('/auth/logout',{method:'POST'})}catch{}
-  S.user=null;toast('Signed out');go('landing');
+  try{await fetch('/auth/logout',{method:'POST',credentials:'include'})}catch{}
+  S.user=null; go('landing'); setTimeout(()=>toast('Signed out'),200);
 }
 
 // ═══════════════════════════════════════════════════
@@ -970,7 +1090,10 @@ async function refreshDash(){
   setText('d-xp-badge','⚡ '+(u.xp||0)+' XP');
   setText('d-rank-badge',u.rank||'Beginner');
   setText('d-level-badge','Level '+(u.level||1));
-  setText('d-streak-badge','🔥 '+(u.streak||1)+' day'+(u.streak!==1?'s':''));
+  const streakTxt='🔥 '+(u.streak||1)+' day'+(u.streak!==1?'s':'');
+  setText('d-streak-badge',streakTxt);
+  setText('d-streak-badge-welcome',streakTxt);
+  document.querySelectorAll('[data-streak]').forEach(el=>el.textContent=streakTxt);
   setText('rp-rank',u.rank||'Beginner');
   setText('rp-next',u.next_rank||'Explorer');
   setText('rp-xp-cur',(u.xp||0)+' XP');
@@ -980,6 +1103,8 @@ async function refreshDash(){
   setText('ds-pct',(u.percentile||0)+'%');
   setText('ds-courses',u.courses||0);
   setText('ds-quizzes',u.quizzes_done||0);
+  // Refresh daily streak status
+  loadDailyStatus();
   // Check for due reviews
   try{
     const r=await fetch('/user/analytics',{credentials:'include'});const d=await r.json();S._lastAnalytics=d;
@@ -1043,6 +1168,8 @@ async function generateContent(){
     if(!fileText.trim()){
       throw new Error('Could not read any content from your files. Try a .txt or .md file, or add a title describing the topic.');
     }
+    // Update daily streak status from server response
+    if(extracted.daily_status) updateDailyStatus(extracted.daily_status);
     bar.style.width='40%'; msg.textContent='File read — '+extracted.char_count+' characters extracted. Sending to AI…';
 
     // ── STEP 2: Generate quiz and/or summary with the real text ──
@@ -1152,7 +1279,7 @@ function nextQ(){S.qIdx++;renderQ()}
 async function endQuiz(){
   clearInterval(S.timerInt);
   const tot=S.quiz.length; const pct=Math.round((S.score/tot)*100);
-  setText('sc-pct',pct+'%'); setText('sc-xp','+'+S.xpEarned);
+  setText('sc-pct',pct+'%'); setText('sc-xp','+'+S.xpEarned+' XP');
   setText('sc-cor',S.score+'/'+tot);
   setText('sc-streak','🔥'+(S.user?.streak||1));
   const titles=[[90,'Excellent! 🎉'],[70,'Great Work! 👏'],[50,'Good Effort! 💪'],[0,'Keep Going! 📚']];
@@ -1180,8 +1307,17 @@ async function endQuiz(){
 }
 
 async function addXP(amount,quizDone=0,courseDone=0,duration=0,topics=[]){
-  if(!S.user)return;
-  try{const r=await api('/user/xp','POST',{amount,quiz_done:quizDone,course_done:courseDone,duration_min:duration,topics});S.user=r.user}catch{}
+  if(!S.user) return;
+  try{
+    const r=await api('/user/xp','POST',{amount,quiz_done:quizDone,course_done:courseDone,duration_min:duration,topics});
+    if(r.user) S.user=r.user;
+    if(r.daily_status) updateDailyStatus(r.daily_status);
+    // Refresh dashboard streak display
+    if(S.user){
+      setText('d-streak-badge','🔥 '+(S.user.streak||1)+' day'+(S.user.streak!==1?'s':''));
+      setText('sc-streak','🔥'+(S.user.streak||1));
+    }
+  }catch(e){ console.warn('addXP error:',e.message) }
 }
 
 function retryQuiz(){S.qIdx=0;S.score=0;S.xpEarned=0;S.topicResults=[];startTimer();renderQ();go('quiz')}
@@ -1317,6 +1453,7 @@ async function explainHW(){
     const d=await r.json();
     document.getElementById('hwLoading').style.display='none';
     renderHWResult(d.explanation||'No explanation returned.');
+    if(d.daily_status) updateDailyStatus(d.daily_status);
     addXP(15,0,0,2,[]);
     toast('+15 XP earned!');
   }catch(e){
@@ -1342,6 +1479,7 @@ async function checkSolution(){
     const d=await r.json();
     document.getElementById('ckLoading').style.display='none';
     renderCheckResult(d.feedback,d.is_correct);
+    if(d.daily_status) updateDailyStatus(d.daily_status);
     if(d.is_correct){addXP(20,0,0,1,[]);confetti();toast('+20 XP — Correct! 🎉')}
     else toast('Check the feedback below and try again!');
   }catch(e){
@@ -1425,7 +1563,7 @@ function closeCamera(target){
 // ═══════════════════════════════════════════════════
 async function loadAnalytics(){
   try{
-    const r=await fetch('/user/analytics');
+    const r=await fetch('/user/analytics',{credentials:'include'});
     if(!r.ok)return;
     const d=await r.json();
     // Summary tiles
@@ -1571,7 +1709,15 @@ function demoQuiz(){
 async function api(url,method='GET',data=null){
   const opts={method,headers:{'Content-Type':'application/json'},credentials:'include'};
   if(data)opts.body=JSON.stringify(data);
-  const r=await fetch(url,opts); const json=await r.json();
+  const r=await fetch(url,opts);
+  const json=await r.json();
+  if(r.status===401){
+    // Session expired — send user back to sign in
+    S.user=null;
+    go('signin');
+    toast('Session expired — please sign in again');
+    throw new Error('Not authenticated');
+  }
   if(!r.ok)throw new Error(json.error||json.message||'Request failed');
   return json;
 }
