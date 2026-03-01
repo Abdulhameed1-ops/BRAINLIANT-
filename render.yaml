@@ -1,0 +1,43 @@
+# render.yaml — Render deployment configuration
+# ─────────────────────────────────────────────────────────────────────────────
+# IMPORTANT SETUP STEPS (do these once in Render dashboard):
+#
+#  1. After first deploy, go to your service → Environment
+#  2. Add SECRET_KEY  →  paste a long random string (generate at passwordsgenerator.net)
+#     !! NEVER use generateValue — that rotates the key on every deploy, logging everyone out !!
+#  3. Add COHERE_API_KEY  →  your Cohere key
+#  4. Add OCR_API_KEY     →  your OCR.space key
+#  5. Add GOOGLE_CLIENT_ID → your Google OAuth client ID (optional)
+#  6. DATABASE_URL is filled automatically when Render links the database below
+# ─────────────────────────────────────────────────────────────────────────────
+
+services:
+  - type: web
+    name: brainliant
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app --workers 2 --timeout 120 --bind 0.0.0.0:$PORT
+    envVars:
+      - key: RENDER
+        value: "true"
+      # SECRET_KEY — set MANUALLY in Render dashboard. Use a 50+ char random string.
+      # NEVER auto-generate: rotating the key invalidates every user session on every deploy.
+      - key: SECRET_KEY
+        sync: false
+      - key: DATABASE_URL
+        fromDatabase:
+          name: brainliant-db
+          property: connectionString
+      - key: COHERE_API_KEY
+        sync: false
+      - key: OCR_API_KEY
+        sync: false
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+
+databases:
+  - name: brainliant-db
+    plan: free
+    databaseName: brainliant
+    user: brainliant
