@@ -62,9 +62,10 @@ login_manager = LoginManager(app)
 login_manager.login_view = 'index'   # redirect unauthenticated requests to SPA
 
 # ── App constants ──
-COHERE_API_KEY = os.environ.get('COHERE_API_KEY', '')
-OCR_API_KEY    = os.environ.get('OCR_API_KEY', '')
-RANKS          = ['Beginner','Explorer','Scholar','Strategist','Master','Grandmaster','Legend']
+COHERE_API_KEY   = os.environ.get('COHERE_API_KEY', '')
+OCR_API_KEY      = os.environ.get('OCR_API_KEY', '')
+GOOGLE_CLIENT_ID = os.environ.get('GOOGLE_CLIENT_ID', '')
+RANKS            = ['Beginner','Explorer','Scholar','Strategist','Master','Grandmaster','Legend']
 RANK_XP        = [0, 500, 1500, 3500, 7000, 12000, 20000]
 
 # ─── MODELS ───────────────────────────────────────────────────────────────────
@@ -75,7 +76,8 @@ class User(UserMixin, db.Model):
     name            = db.Column(db.String(120),  nullable=False)
     username        = db.Column(db.String(50),   unique=True, nullable=False)
     email           = db.Column(db.String(200),  unique=True, nullable=False)
-    password_hash   = db.Column(db.String(255),  nullable=False)   # bcrypt hash
+    password_hash   = db.Column(db.String(255),  nullable=True)    # null for Google-only accounts
+    google_id       = db.Column(db.String(128),  unique=True, nullable=True)   # Google sub claim
     xp              = db.Column(db.Integer,      default=0)
     level           = db.Column(db.Integer,      default=1)
     rank            = db.Column(db.String(50),   default='Beginner')
@@ -94,19 +96,19 @@ class User(UserMixin, db.Model):
 
     def check_password(self, password: str) -> bool:
         """
-        Verify password. Handles two cases:
-        1. bcrypt hash (new standard)
-        2. SHA-256 hex string (old format — migrates automatically on success)
+        Verify password. Handles:
+        1. bcrypt hash (standard)
+        2. SHA-256 hex (legacy — migrates to bcrypt on success)
+        3. Google-only accounts (no password_hash) — always False
         """
-        # Try bcrypt first (standard path)
+        if not self.password_hash:
+            return False   # Google-only account, use Google sign-in
         if self.password_hash.startswith('$2'):
             return bcrypt.check_password_hash(self.password_hash, password)
-
-        # Legacy SHA-256 migration path
+        # Legacy SHA-256 migration
         import hashlib
         sha256_hash = hashlib.sha256(password.encode()).hexdigest()
         if sha256_hash == self.password_hash:
-            # Upgrade to bcrypt transparently
             self.set_password(password)
             db.session.commit()
             return True
@@ -241,9 +243,9 @@ class SavedQuiz(db.Model):
 class SystemStats(db.Model):
     __tablename__ = 'system_stats'
     id              = db.Column(db.Integer, primary_key=True)
-    total_users     = db.Column(db.Integer, default=18294)
-    total_quizzes   = db.Column(db.Integer, default=342817)
-    total_files     = db.Column(db.Integer, default=89421)
+    total_users     = db.Column(db.Integer, default=0)
+    total_quizzes   = db.Column(db.Integer, default=0)
+    total_files     = db.Column(db.Integer, default=0)
 
 
 # ─── FLASK-LOGIN ──────────────────────────────────────────────────────────────
@@ -281,10 +283,52 @@ def make_session_permanent():
     from flask import session as _session
     _session.permanent = True
 
-# ─── DB INIT ──────────────────────────────────────────────────────────────────
+# ─── DB INIT & MIGRATION ──────────────────────────────────────────────────────
 
 with app.app_context():
     db.create_all()
+
+    # Safe column migrations — add any new columns that may not exist yet
+    # in databases created before these columns were introduced.
+    # This runs every startup and is idempotent (safe to run repeatedly).
+    try:
+        with db.engine.connect() as conn:
+            # Detect dialect
+            dialect = db.engine.dialect.name  # 'postgresql' or 'sqlite'
+
+            def column_exists(table, column):
+                if dialect == 'postgresql':
+                    result = conn.execute(
+                        db.text("SELECT 1 FROM information_schema.columns "
+                                "WHERE table_name=:t AND column_name=:c"),
+                        {'t': table, 'c': column}
+                    )
+                else:  # sqlite
+                    result = conn.execute(db.text(f"PRAGMA table_info({table})"))
+                    return any(row[1] == column for row in result)
+                return result.fetchone() is not None
+
+            migrations = [
+                # (table, column, DDL to add it)
+                ('users', 'google_id',
+                 'ALTER TABLE users ADD COLUMN google_id VARCHAR(128)'),
+                ('study_sessions', 'files_uploaded',
+                 'ALTER TABLE study_sessions ADD COLUMN files_uploaded INTEGER DEFAULT 0'),
+                ('study_sessions', 'hw_images',
+                 'ALTER TABLE study_sessions ADD COLUMN hw_images INTEGER DEFAULT 0'),
+                ('study_sessions', 'quizzes_done',
+                 'ALTER TABLE study_sessions ADD COLUMN quizzes_done INTEGER DEFAULT 0'),
+            ]
+
+            for table, column, ddl in migrations:
+                if not column_exists(table, column):
+                    conn.execute(db.text(ddl))
+                    conn.commit()
+
+    except Exception as migration_err:
+        # Never let a migration failure crash the app
+        print(f'[migration] warning: {migration_err}')
+
     if not SystemStats.query.first():
         db.session.add(SystemStats())
         db.session.commit()
@@ -361,17 +405,22 @@ def ocr_image(file_obj, fname: str = 'image.png'):
 # ─── FILE EXTRACTORS ──────────────────────────────────────────────────────────
 
 def ext_pdf(data: bytes) -> str:
-    parts = []
-    for m in re.finditer(rb'stream\r?\n(.*?)\r?\nendstream', data, re.DOTALL):
-        chunk = m.group(1)
-        try: chunk = zlib.decompress(chunk)
-        except: pass
-        dec = chunk.decode('latin-1', errors='ignore')
-        for p in re.findall(r'\(([^)\\]*(?:\\.[^)\\]*)*)\)\s*Tj', dec):
-            parts.append(p.replace('\\n', ' '))
-        for b in re.findall(r'\[([^\]]*)\]\s*TJ', dec):
-            parts.extend(re.findall(r'\(([^)\\]*(?:\\.[^)\\]*)*)\)', b))
-    return re.sub(r'\s+', ' ', ' '.join(parts)).strip()
+    """Extract text from PDF using pypdf — handles text-based PDFs properly."""
+    try:
+        from pypdf import PdfReader
+        reader = PdfReader(io.BytesIO(data))
+        pages = []
+        for page in reader.pages:
+            try:
+                t = page.extract_text()
+                if t and t.strip():
+                    pages.append(t.strip())
+            except Exception:
+                pass
+        text = '\n\n'.join(pages)
+        return re.sub(r'[ \t]+', ' ', text).strip()
+    except Exception:
+        return ''
 
 def ext_docx(data: bytes) -> str:
     try:
@@ -402,13 +451,43 @@ def ext_xlsx(data: bytes) -> str:
     except Exception:
         return ''
 
+def ext_audio(data: bytes, filename: str = 'audio.wav') -> str:
+    """Transcribe audio using SpeechRecognition (Google free API). Converts via pydub if needed."""
+    try:
+        import speech_recognition as sr
+        recognizer = sr.Recognizer()
+        fn_lower = filename.lower()
+        audio_data = data
+        if not fn_lower.endswith('.wav'):
+            try:
+                from pydub import AudioSegment
+                fmt_map = {'.mp3': 'mp3', '.m4a': 'mp4', '.ogg': 'ogg',
+                           '.webm': 'webm', '.flac': 'flac', '.aac': 'aac'}
+                ext = '.' + fn_lower.rsplit('.', 1)[-1] if '.' in fn_lower else '.mp3'
+                fmt = fmt_map.get(ext, 'mp3')
+                seg = AudioSegment.from_file(io.BytesIO(data), format=fmt)
+                wav_buf = io.BytesIO()
+                seg.export(wav_buf, format='wav')
+                wav_buf.seek(0)
+                audio_data = wav_buf.read()
+            except Exception:
+                return ''
+        with sr.AudioFile(io.BytesIO(audio_data)) as source:
+            audio = recognizer.record(source)
+        return recognizer.recognize_google(audio)
+    except Exception:
+        return ''
+
+
 def proc_file(fs):
     """Route uploaded FileStorage to the right extractor. Returns (text, error_or_None)."""
     fn = (fs.filename or '').lower()
     data = fs.read()
     if fn.endswith('.pdf'):
         t = ext_pdf(data)
-        return (t, None) if len(t.strip()) >= 30 else (None, 'PDF has no selectable text (scanned). Enter the topic in the Title field instead.')
+        if len(t.strip()) >= 30:
+            return (t, None)
+        return (None, 'PDF has no selectable text — it may be scanned. Try a text-based PDF or add the topic in the Title field.')
     if fn.endswith(('.docx', '.doc')):
         t = ext_docx(data); return (t, None) if t.strip() else (None, 'Could not read DOCX file.')
     if fn.endswith(('.xlsx', '.xls')):
@@ -421,6 +500,9 @@ def proc_file(fs):
             try: return data.decode(enc), None
             except: pass
         return data.decode('utf-8', errors='ignore'), None
+    if fn.endswith(('.mp3', '.wav', '.ogg', '.m4a', '.webm', '.flac', '.aac')):
+        t = ext_audio(data, fs.filename)
+        return (t, None) if t.strip() else (None, 'Could not transcribe audio — ensure the file has clear speech.')
     return None, f'Unsupported file type: {fn.rsplit(".", 1)[-1] if "." in fn else "unknown"}'
 
 # ─── ADAPTIVE LEARNING HELPERS ────────────────────────────────────────────────
@@ -443,7 +525,7 @@ def upsert_topic(user_id: str, topic: str, correct: int, total: int):
     tm.total   += total
     tm.schedule_next(correct > 0)
     db.session.commit()
-    
+
 def fallback_qs(topic: str, n: int) -> list:
     base = [
         {'q': f'Core concept of "{topic}"?',
@@ -474,7 +556,7 @@ def get_or_create_today_session(user_id: str) -> StudySession:
 
 @app.route('/')
 def index():
-    return render_template('index.html')
+    return render_template('index.html', google_client_id=GOOGLE_CLIENT_ID)
 
 @app.route('/static/<path:fn>')
 def statics(fn):
@@ -508,8 +590,17 @@ def daily_status():
 
 @app.route('/stats')
 def stats():
+    # Always count real users directly from the users table — never fake numbers
+    real_users   = User.query.count()
+    # Quizzes and files come from SystemStats (incremented on each action)
     s = SystemStats.query.first()
-    return jsonify({'users': s.total_users, 'quizzes': s.total_quizzes, 'files': s.total_files})
+    total_quizzes = s.total_quizzes if s else 0
+    total_files   = s.total_files   if s else 0
+    return jsonify({
+        'users':   real_users,
+        'quizzes': total_quizzes,
+        'files':   total_files,
+    })
 
 # ── Legal pages ───────────────────────────────────────────────────────────────
 
@@ -522,6 +613,88 @@ def privacy():
     return render_template('privacy.html')
 
 # ── Auth ──────────────────────────────────────────────────────────────────────
+
+@app.route('/auth/google', methods=['POST'])
+def google_auth():
+    """
+    Verify a Google ID token sent from the frontend.
+    Creates a new account or logs into an existing one.
+    No GOOGLE_CLIENT_ID needed for token verification — we use Google's tokeninfo endpoint.
+    If GOOGLE_CLIENT_ID is set, we also verify the audience claim for extra security.
+    """
+    d     = request.get_json() or {}
+    token = (d.get('credential') or '').strip()
+    if not token:
+        return jsonify({'error': 'No Google credential received.'}), 400
+
+    # Verify the token with Google's public endpoint
+    try:
+        r = http_req.get(
+            'https://oauth2.googleapis.com/tokeninfo',
+            params={'id_token': token},
+            timeout=10
+        )
+        if not r.ok:
+            return jsonify({'error': 'Google sign-in failed — invalid token.'}), 401
+        info = r.json()
+    except Exception:
+        return jsonify({'error': 'Could not reach Google to verify sign-in.'}), 503
+
+    # Validate audience if GOOGLE_CLIENT_ID is configured
+    if GOOGLE_CLIENT_ID and info.get('aud') != GOOGLE_CLIENT_ID:
+        return jsonify({'error': 'Google sign-in failed — token audience mismatch.'}), 401
+
+    google_id = info.get('sub', '')
+    email     = (info.get('email') or '').strip().lower()
+    name      = (info.get('name') or email.split('@')[0] or 'Learner').strip()
+
+    if not google_id or not email:
+        return jsonify({'error': 'Google did not return required profile information.'}), 400
+
+    # Find existing user by google_id or email
+    user = User.query.filter_by(google_id=google_id).first()
+    if not user:
+        user = User.query.filter_by(email=email).first()
+
+    if user:
+        # Existing user — link Google ID if not already linked
+        if not user.google_id:
+            user.google_id = google_id
+        user.update_streak()
+        db.session.commit()
+    else:
+        # New user — create account
+        base_username = re.sub(r'[^a-z0-9]', '', email.split('@')[0].lower()) or 'user'
+        username = base_username
+        counter  = 1
+        while User.query.filter_by(username=username).first():
+            username = f'{base_username}{counter}'; counter += 1
+
+        user = User(name=name, username=username, email=email, google_id=google_id)
+        # No password for Google accounts — password_hash stays None
+        db.session.add(user)
+        stats = SystemStats.query.first()
+        if stats: stats.total_users += 1
+        db.session.commit()
+
+    from flask import session as _session
+    _session.permanent = True
+    login_user(user, remember=True)
+
+    is_new = not bool(info.get('sub') and User.query.filter_by(google_id=google_id).count() > 1)
+    return jsonify({'user': user.to_dict(), 'message': 'Signed in with Google!'})
+
+
+@app.route('/app/download')
+def app_download():
+    """Serve the Android APK for download."""
+    return send_from_directory(
+        os.path.join(app.root_path, 'static'),
+        'Brainliant.apk',
+        as_attachment=True,
+        download_name='Brainliant.apk'
+    )
+
 
 @app.route('/auth/check')
 def auth_check():
@@ -752,6 +925,22 @@ def upload_extract():
                         'streak_secured': secured,
                         'streak': current_user.streak,
                     }})
+
+@app.route('/ai/transcribe-audio', methods=['POST'])
+@login_required
+def transcribe_audio():
+    """Accept audio file upload, return transcribed text for quiz/note generation."""
+    if 'audio' not in request.files:
+        return jsonify({'error': 'No audio file received.'}), 400
+    f = request.files['audio']
+    if not f or not f.filename:
+        return jsonify({'error': 'Empty audio file.'}), 400
+    data = f.read()
+    text = ext_audio(data, f.filename)
+    if not text.strip():
+        return jsonify({'error': 'Could not transcribe audio — ensure file has clear speech and ffmpeg is installed.'}), 422
+    return jsonify({'text': text, 'char_count': len(text)})
+
 
 # ── AI Routes ─────────────────────────────────────────────────────────────────
 
