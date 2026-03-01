@@ -6,8 +6,6 @@ flask-sqlalchemy==3.1.1
 SQLAlchemy==2.0.36
 
 # Database drivers
-# SQLite is built-in to Python (used locally)
-# psycopg2-binary is the PostgreSQL driver for Render
 psycopg2-binary==2.9.10
 
 # HTTP + AI
@@ -17,6 +15,11 @@ requests==2.32.3
 Pillow==11.0.0
 python-docx==1.1.2
 openpyxl==3.1.5
+pypdf==4.3.1
 
-# WSGI server for production (Render uses gunicorn)
+# Audio transcription
+SpeechRecognition==3.10.4
+pydub==0.25.1
+
+# WSGI server for production
 gunicorn==23.0.0
