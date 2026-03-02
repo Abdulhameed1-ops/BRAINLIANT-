@@ -8,6 +8,7 @@
 <script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','G-H67NRCSEJP');</script>
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 <!-- Google GSI loaded dynamically after app boot -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{
@@ -78,6 +79,33 @@ html{scroll-behavior:smooth}
   .study-setup{max-width:320px}
   .study-timer-screen{max-width:280px}
 }
+/* ── REVIEWS ── */
+.reviews-section{padding:24px 20px 8px;background:var(--white)}
+.reviews-section h3{font-size:1.05rem;font-weight:800;color:var(--text);margin-bottom:4px}
+.reviews-avg-row{display:flex;align-items:center;gap:10px;margin-bottom:18px}
+.reviews-big-score{font-size:2.4rem;font-weight:900;color:var(--text);line-height:1}
+.reviews-stars-big{display:flex;gap:2px}
+.star-icon{font-size:1.1rem;cursor:pointer;transition:transform .1s}
+.star-icon:hover{transform:scale(1.2)}
+.reviews-meta{font-size:.72rem;color:var(--muted);font-weight:500;margin-top:2px}
+.review-card{background:var(--bg);border-radius:14px;padding:14px 16px;margin-bottom:10px;border:1px solid var(--border)}
+.review-card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
+.review-avatar{width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,var(--blue),var(--purple));color:#fff;font-size:.8rem;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.review-name{font-size:.82rem;font-weight:700;color:var(--text)}
+.review-rank{font-size:.68rem;color:var(--muted);font-weight:500}
+.review-stars{display:flex;gap:1px;font-size:.85rem}
+.review-comment{font-size:.82rem;color:var(--muted);line-height:1.5;margin-top:4px}
+.review-date{font-size:.68rem;color:var(--subtle);margin-top:6px}
+.review-form{background:var(--bg);border:1.5px solid var(--border);border-radius:14px;padding:16px;margin-top:4px}
+.review-form h4{font-size:.85rem;font-weight:700;margin-bottom:10px}
+.star-picker{display:flex;gap:6px;margin-bottom:12px}
+.star-pick{font-size:1.6rem;cursor:pointer;transition:transform .15s;opacity:.35}
+.star-pick.active{opacity:1}
+.star-pick:hover{transform:scale(1.15)}
+.review-textarea{width:100%;border:1.5px solid var(--border);border-radius:10px;padding:10px 12px;font-family:'Poppins',sans-serif;font-size:.82rem;color:var(--text);resize:none;min-height:72px;outline:none;transition:border-color .2s}
+.review-textarea:focus{border-color:var(--blue)}
+.reviews-empty{text-align:center;padding:28px 20px;color:var(--muted);font-size:.82rem}
+
 /* ── GOOGLE BUTTON ── */
 .btn-google{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;padding:13px;border:1.5px solid var(--border);border-radius:12px;background:#fff;font-family:'Poppins',sans-serif;font-size:.88rem;font-weight:600;color:var(--text);cursor:pointer;transition:background .15s,border-color .15s;margin-bottom:4px}
 .btn-google:hover{background:#F8FAFC;border-color:#CBD5E1}
@@ -553,6 +581,7 @@ textarea.form-input{resize:vertical;min-height:90px}
     <div class="stat-block"><div class="stat-num" id="ls-users">—</div><div class="stat-lbl">Learners</div></div>
     <div class="stat-block"><div class="stat-num" id="ls-q">—</div><div class="stat-lbl">Quizzes</div></div>
     <div class="stat-block"><div class="stat-num" id="ls-f">—</div><div class="stat-lbl">Files</div></div>
+    <div class="stat-block"><div class="stat-num" id="ls-dl">—</div><div class="stat-lbl">Downloads</div></div>
   </div>
   <div class="landing-section">
     <p class="section-title">Everything to master anything</p>
@@ -606,6 +635,25 @@ textarea.form-input{resize:vertical;min-height:90px}
     </div>
 
   </div>
+  <!-- ══ REVIEWS SECTION (landing) ══ -->
+  <div class="reviews-section" id="landing-reviews">
+    <p class="section-title" style="margin-bottom:16px">What learners say</p>
+    <!-- Summary row -->
+    <div style="display:flex;align-items:center;gap:14px;background:var(--bg);border-radius:16px;padding:16px 18px;margin-bottom:16px;border:1px solid var(--border)">
+      <div style="text-align:center;min-width:56px">
+        <div class="reviews-big-score" id="lr-avg">—</div>
+        <div style="font-size:.65rem;color:var(--muted);font-weight:600;margin-top:2px">out of 5</div>
+      </div>
+      <div style="flex:1">
+        <div class="reviews-stars-big" id="lr-stars-big" style="margin-bottom:4px"></div>
+        <div class="reviews-meta" id="lr-meta">No reviews yet — be the first!</div>
+        <button onclick="go('signin')" style="margin-top:8px;background:none;border:none;color:var(--blue);font-size:.75rem;font-weight:700;cursor:pointer;padding:0;font-family:inherit">✏️ Leave a review →</button>
+      </div>
+    </div>
+    <!-- Review cards -->
+    <div id="lr-list"></div>
+  </div>
+
   <div style="padding:20px;background:var(--white)">
     <button class="btn btn-primary btn-full" style="padding:16px;font-size:.95rem" onclick="go('signup')">Create Free Account</button>
     <button class="btn btn-ghost btn-full" style="padding:14px;margin-top:10px" onclick="go('signin')">Sign In</button>
@@ -753,10 +801,10 @@ textarea.form-input{resize:vertical;min-height:90px}
   <div class="page-header"><h2>Create Learning Content</h2><p>Upload your material and choose what to generate.</p></div>
   <div class="upload-body">
     <div class="drop-zone" id="dropZone">
-      <input type="file" id="fileInput" multiple accept=".pdf,.docx,.txt,.md,.mp3,.wav,.ogg,.m4a,.webm,.flac,.aac" onchange="handleFiles(this.files)">
+      <input type="file" id="fileInput" multiple accept=".pdf,.docx,.txt,.md" onchange="handleFiles(this.files)">
       <div class="drop-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--blue)" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg></div>
       <h4>Drop files here or tap to browse</h4>
-      <p>PDF, DOCX, TXT, MD · MP3, WAV, M4A, OGG</p>
+      <p>PDF, DOCX, TXT, MD</p>
     </div>
     <div id="fileList" style="display:flex;flex-direction:column;gap:8px"></div>
     <div id="uploadConfig" style="display:none">
@@ -994,6 +1042,23 @@ textarea.form-input{resize:vertical;min-height:90px}
     </div>
     <div class="settings-section"><p class="settings-label">Offline Quizzes</p>
       <div class="card"><p style="font-size:.8rem;font-weight:600;margin-bottom:12px">Saved for Offline</p><div id="savedQuizList"><div class="loader" style="padding:16px"><div class="loader-dot"></div><div class="loader-dot"></div><div class="loader-dot"></div></div></div></div>
+    </div>
+    <div class="settings-section"><p class="settings-label">Rate Brainliant</p>
+      <div class="review-form" id="review-form-wrap">
+        <h4>Leave a Review</h4>
+        <div class="star-picker" id="star-picker">
+          <span class="star-pick" data-v="1" onclick="pickStar(1)">⭐</span>
+          <span class="star-pick" data-v="2" onclick="pickStar(2)">⭐</span>
+          <span class="star-pick" data-v="3" onclick="pickStar(3)">⭐</span>
+          <span class="star-pick" data-v="4" onclick="pickStar(4)">⭐</span>
+          <span class="star-pick" data-v="5" onclick="pickStar(5)">⭐</span>
+        </div>
+        <textarea class="review-textarea" id="review-comment" placeholder="Tell others what you think of Brainliant…" maxlength="500"></textarea>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px">
+          <span style="font-size:.7rem;color:var(--subtle)" id="review-char-count">0 / 500</span>
+          <button class="btn btn-primary btn-sm" id="review-submit-btn" onclick="submitReview()">Submit Review</button>
+        </div>
+      </div>
     </div>
     <div class="settings-section"><p class="settings-label">About</p>
       <div class="card" style="text-align:center;padding:28px"><img src="/static/logo.png" style="width:64px;height:64px;object-fit:contain;margin-bottom:10px;filter:drop-shadow(0 4px 12px rgba(124,58,237,.25))"><div class="logo" style="font-size:1.4rem;margin-bottom:6px">Brainliant</div><p style="font-size:.75rem;color:var(--muted)">AI-Powered Learning Platform</p><p style="font-size:.7rem;color:var(--subtle);margin-top:4px">Powered by Cohere command-a-03-2025</p><div style="margin-top:16px;display:flex;justify-content:center;gap:16px"><a href="/terms" target="_blank" style="font-size:.72rem;color:var(--blue);font-weight:600;text-decoration:none">Terms of Service</a><a href="/privacy" target="_blank" style="font-size:.72rem;color:var(--blue);font-weight:600;text-decoration:none">Privacy Policy</a></div></div>
@@ -1234,7 +1299,7 @@ async function init(){
   // Fire stats in background — don't let it block startup
   fetchWithTimeout('/stats',{},3000)
     .then(r=>r.json())
-    .then(d=>{animCount('ls-users',d.users);animCount('ls-q',d.quizzes);animCount('ls-f',d.files)})
+    .then(d=>{animCount('ls-users',d.users);animCount('ls-q',d.quizzes);animCount('ls-f',d.files);if(d.downloads!=null)animCount('ls-dl',d.downloads);})
     .catch(()=>{});
 
   // Auth check — 4 second hard timeout
@@ -1246,6 +1311,7 @@ async function init(){
       hideSplash();
       go('dashboard');
       loadDailyStatus();
+      loadReviews(); // keep reviews fresh in background
       setTimeout(loadGoogleSignIn, 1000);
       return;
     }
@@ -1255,6 +1321,7 @@ async function init(){
   // Not authenticated or network error — show landing page
   hideSplash();
   go('landing');
+  loadReviews(); // load real reviews on landing
   // Load Google Sign-In after app is visible (non-blocking)
   setTimeout(loadGoogleSignIn, 1000);
 }
@@ -1372,23 +1439,61 @@ async function generateContent(){
   const intv=setInterval(()=>{p=Math.min(p+2,88);bar.style.width=p+'%';msg.textContent=msgs[Math.min(Math.floor(p/20),msgs.length-1)]},300);
 
   try{
-    // ── STEP 1: Upload files to server, get extracted text back ──
-    msg.textContent='Uploading and reading your files…';
-    const fd=new FormData();
-    S.files.forEach(f=>fd.append('files',f));
-    const extractResp=await fetch('/upload/extract',{method:'POST',body:fd,credentials:'include'});
-    if(!extractResp.ok){
-      const err=await extractResp.json().catch(()=>({}));
-      throw new Error(err.error||'File upload failed ('+extractResp.status+'). Are you logged in?');
+    // ── STEP 1: Extract text from files ──
+    // PDFs are read client-side with PDF.js (fast, no upload needed)
+    // DOCX/TXT/MD are sent to the server for extraction
+    msg.textContent='Reading your files…';
+
+    const pdfFiles   = S.files.filter(f=>f.name.toLowerCase().endsWith('.pdf'));
+    const otherFiles = S.files.filter(f=>!f.name.toLowerCase().endsWith('.pdf'));
+    const textParts  = [];
+
+    // ── PDF.js client-side extraction ──
+    if(pdfFiles.length){
+      if(typeof pdfjsLib === 'undefined') throw new Error('PDF.js not loaded — check your internet connection.');
+      pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
+      for(const pf of pdfFiles){
+        msg.textContent='Reading ' + pf.name + '…';
+        const buf = await pf.arrayBuffer();
+        const pdf = await pdfjsLib.getDocument({data: buf}).promise;
+        let pdfText = '';
+        for(let p = 1; p <= pdf.numPages; p++){
+          const page    = await pdf.getPage(p);
+          const content = await page.getTextContent();
+          pdfText += content.items.map(i=>i.str).join(' ') + '\n\n';
+        }
+        if(pdfText.trim()) textParts.push('=== ' + pf.name + ' ===\n' + pdfText.trim());
+      }
     }
-    const extracted=await extractResp.json();
-    const fileText=extracted.text||'';
+
+    // ── Server-side extraction for DOCX/TXT/MD ──
+    let extracted = {daily_status: null};
+    if(otherFiles.length){
+      msg.textContent='Uploading ' + otherFiles.map(f=>f.name).join(', ') + '…';
+      const fd = new FormData();
+      otherFiles.forEach(f=>fd.append('files',f));
+      const extractResp = await fetch('/upload/extract',{method:'POST',body:fd,credentials:'include'});
+      if(!extractResp.ok){
+        const err = await extractResp.json().catch(()=>({}));
+        throw new Error(err.error||'File upload failed ('+extractResp.status+'). Are you logged in?');
+      }
+      extracted = await extractResp.json();
+      if(extracted.text && extracted.text.trim()) textParts.push(extracted.text.trim());
+    } else {
+      // Only PDFs — still ping server to track daily activity
+      try{
+        const r=await fetch('/upload/extract',{method:'POST',body:(()=>{const fd=new FormData();fd.append('pdfonly','1');return fd})(),credentials:'include'});
+        const d=await r.json().catch(()=>({}));
+        extracted.daily_status = d.daily_status||null;
+      }catch{}
+    }
+
+    const fileText = textParts.join('\n\n');
     if(!fileText.trim()){
-      throw new Error('Could not read any content from your files. Try a .txt or .md file, or add a title describing the topic.');
+      throw new Error('Could not read any content from your files. Make sure the PDF has selectable text (not scanned images).');
     }
-    // Update daily streak status from server response
     if(extracted.daily_status) updateDailyStatus(extracted.daily_status);
-    bar.style.width='40%'; msg.textContent='File read — '+extracted.char_count+' characters extracted. Sending to AI…';
+    bar.style.width='40%'; msg.textContent='Content extracted — ' + fileText.length + ' characters. Sending to AI…';
 
     // ── STEP 2: Generate quiz and/or summary with the real text ──
     if(outputTab==='quiz'||outputTab==='both'){
@@ -1881,6 +1986,22 @@ function setTab(tab){
 // SETTINGS
 // ═══════════════════════════════════════════════════
 async function refreshSettings(){
+  // Pre-load user's existing review if they have one
+  if (S.user) {
+    fetchWithTimeout('/reviews', {}, 4000)
+      .then(r => r.json())
+      .then(d => {
+        const mine = (d.reviews || []).find(r => r.username === S.user.username);
+        if (mine) {
+          pickStar(mine.stars);
+          const ta = document.getElementById('review-comment');
+          if (ta) { ta.value = mine.comment; ta.dispatchEvent(new Event('input')); }
+          const btn = document.getElementById('review-submit-btn');
+          if (btn) btn.textContent = 'Update Review';
+        }
+      }).catch(() => {});
+  }
+
   if(!S.user)return;
   const u=S.user;
   const init=u.name.split(' ').map(n=>n[0]).join('').toUpperCase().slice(0,2);
@@ -2322,6 +2443,114 @@ function startStudyBubbleCycle() {
   }, 8000); // new message every 8 seconds
 }
 
+
+// ═══════════════════════════════════════════════════
+// REVIEWS
+// ═══════════════════════════════════════════════════
+
+let _pickedStars = 0;
+
+function pickStar(n) {
+  _pickedStars = n;
+  document.querySelectorAll('.star-pick').forEach((el, i) => {
+    el.classList.toggle('active', i < n);
+  });
+}
+
+function starsHTML(n) {
+  let s = '';
+  for (let i = 1; i <= 5; i++) s += i <= n ? '⭐' : '☆';
+  return s;
+}
+
+async function loadReviews() {
+  try {
+    const r = await fetchWithTimeout('/reviews', {}, 5000);
+    const d = await r.json();
+    renderLandingReviews(d);
+  } catch(e) {}
+}
+
+function renderLandingReviews(d) {
+  const avg    = d.average || 0;
+  const count  = d.count   || 0;
+  const list   = d.reviews || [];
+
+  // Average score
+  const avgEl = document.getElementById('lr-avg');
+  if (avgEl) avgEl.textContent = count ? avg.toFixed(1) : '—';
+
+  // Big stars
+  const starsEl = document.getElementById('lr-stars-big');
+  if (starsEl) {
+    starsEl.innerHTML = '';
+    for (let i = 1; i <= 5; i++) {
+      const s = document.createElement('span');
+      s.textContent = i <= Math.round(avg) ? '⭐' : '☆';
+      s.style.fontSize = '.95rem';
+      starsEl.appendChild(s);
+    }
+  }
+
+  // Meta line
+  const metaEl = document.getElementById('lr-meta');
+  if (metaEl) metaEl.textContent = count
+    ? count + ' review' + (count !== 1 ? 's' : '') + ' · ' + avg.toFixed(1) + ' / 5'
+    : 'Be the first to review!';
+
+  // Review cards — show up to 5 on landing
+  const listEl = document.getElementById('lr-list');
+  if (!listEl) return;
+  if (!list.length) {
+    listEl.innerHTML = '<div class="reviews-empty">No reviews yet. Sign in to be the first!</div>';
+    return;
+  }
+  listEl.innerHTML = list.slice(0, 5).map(rv => `
+    <div class="review-card">
+      <div class="review-card-header">
+        <div style="display:flex;align-items:center;gap:8px">
+          <div class="review-avatar">${rv.name.charAt(0).toUpperCase()}</div>
+          <div>
+            <div class="review-name">${rv.name}</div>
+            <div class="review-rank">${rv.rank}</div>
+          </div>
+        </div>
+        <div class="review-stars">${starsHTML(rv.stars)}</div>
+      </div>
+      <div class="review-comment">${rv.comment.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div>
+      <div class="review-date">${rv.created_at}</div>
+    </div>
+  `).join('');
+}
+
+// Track character count in textarea
+document.addEventListener('DOMContentLoaded', () => {
+  const ta = document.getElementById('review-comment');
+  if (ta) {
+    ta.addEventListener('input', () => {
+      const el = document.getElementById('review-char-count');
+      if (el) el.textContent = ta.value.length + ' / 500';
+    });
+  }
+});
+
+async function submitReview() {
+  if (!S.user) { toast('Please sign in to leave a review.'); go('signin'); return; }
+  if (!_pickedStars) { toast('Please pick a star rating first.'); return; }
+  const comment = (document.getElementById('review-comment')?.value || '').trim();
+  if (comment.length < 5) { toast('Please write a little more.'); return; }
+  const btn = document.getElementById('review-submit-btn');
+  btnLoad(btn, 'Saving…');
+  try {
+    const d = await api('/reviews', 'POST', { stars: _pickedStars, comment });
+    toast('Review saved! Thanks 🙌');
+    loadReviews(); // refresh landing list
+  } catch(e) {
+    toast(e.message || 'Could not save review.');
+  } finally {
+    btnReset(btn, 'Submit Review');
+  }
+}
 
 // ═══════════════════════════════════════════════════
 // GOOGLE SIGN-IN
