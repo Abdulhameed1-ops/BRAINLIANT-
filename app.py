@@ -64,8 +64,12 @@ login_manager.login_view = 'index'   # redirect unauthenticated requests to SPA
 # ── App constants ──
 COHERE_API_KEY   = os.environ.get('COHERE_API_KEY', '')
 OCR_API_KEY      = os.environ.get('OCR_API_KEY', '')
-GOOGLE_CLIENT_ID = os.environ.get('GOOGLE_CLIENT_ID', '')
-RANKS            = ['Beginner','Explorer','Scholar','Strategist','Master','Grandmaster','Legend']
+GOOGLE_CLIENT_ID  = os.environ.get('GOOGLE_CLIENT_ID', '')
+# Optional: set APK_DOWNLOAD_URL in Render environment to redirect APK downloads
+# to an external host (Google Drive, Dropbox, etc.) instead of serving the file locally.
+# If not set, the app tries to serve static/Brainliant.apk directly.
+APK_DOWNLOAD_URL  = os.environ.get('APK_DOWNLOAD_URL', '')
+RANKS             = ['Beginner','Explorer','Scholar','Strategist','Master','Grandmaster','Legend']
 RANK_XP        = [0, 500, 1500, 3500, 7000, 12000, 20000]
 
 # ─── MODELS ───────────────────────────────────────────────────────────────────
@@ -240,12 +244,35 @@ class SavedQuiz(db.Model):
     created_at  = db.Column(db.DateTime, default=datetime.datetime.utcnow)
 
 
+class Review(db.Model):
+    __tablename__ = 'reviews'
+    id         = db.Column(db.Integer,     primary_key=True)
+    user_id    = db.Column(db.String(36),  db.ForeignKey('users.id'), nullable=False)
+    stars      = db.Column(db.Integer,     nullable=False)
+    comment    = db.Column(db.String(500), nullable=False)
+    created_at = db.Column(db.DateTime,    default=datetime.datetime.utcnow)
+
+    def to_dict(self, user=None):
+        u = user or db.session.get(User, self.user_id)
+        return {
+            'id':         self.id,
+            'stars':      self.stars,
+            'comment':    self.comment,
+            'name':       u.name     if u else 'User',
+            'username':   u.username if u else '',
+            'rank':       u.rank     if u else 'Beginner',
+            'created_at': self.created_at.strftime('%b %d, %Y') if self.created_at else '',
+        }
+
+
 class SystemStats(db.Model):
     __tablename__ = 'system_stats'
+
     id              = db.Column(db.Integer, primary_key=True)
     total_users     = db.Column(db.Integer, default=0)
     total_quizzes   = db.Column(db.Integer, default=0)
     total_files     = db.Column(db.Integer, default=0)
+    total_downloads = db.Column(db.Integer, default=0)
 
 
 # ─── FLASK-LOGIN ──────────────────────────────────────────────────────────────
@@ -312,6 +339,8 @@ with app.app_context():
                 # (table, column, DDL to add it)
                 ('users', 'google_id',
                  'ALTER TABLE users ADD COLUMN google_id VARCHAR(128)'),
+                ('system_stats', 'total_downloads',
+                 'ALTER TABLE system_stats ADD COLUMN total_downloads INTEGER DEFAULT 0'),
                 ('study_sessions', 'files_uploaded',
                  'ALTER TABLE study_sessions ADD COLUMN files_uploaded INTEGER DEFAULT 0'),
                 ('study_sessions', 'hw_images',
@@ -332,6 +361,12 @@ with app.app_context():
     if not SystemStats.query.first():
         db.session.add(SystemStats())
         db.session.commit()
+
+    # Create reviews table if it doesn't exist on older deployed instances
+    try:
+        db.create_all()  # safe to call again — only creates missing tables
+    except Exception:
+        pass
 
 # ─── COHERE ───────────────────────────────────────────────────────────────────
 
@@ -451,32 +486,6 @@ def ext_xlsx(data: bytes) -> str:
     except Exception:
         return ''
 
-def ext_audio(data: bytes, filename: str = 'audio.wav') -> str:
-    """Transcribe audio using SpeechRecognition (Google free API). Converts via pydub if needed."""
-    try:
-        import speech_recognition as sr
-        recognizer = sr.Recognizer()
-        fn_lower = filename.lower()
-        audio_data = data
-        if not fn_lower.endswith('.wav'):
-            try:
-                from pydub import AudioSegment
-                fmt_map = {'.mp3': 'mp3', '.m4a': 'mp4', '.ogg': 'ogg',
-                           '.webm': 'webm', '.flac': 'flac', '.aac': 'aac'}
-                ext = '.' + fn_lower.rsplit('.', 1)[-1] if '.' in fn_lower else '.mp3'
-                fmt = fmt_map.get(ext, 'mp3')
-                seg = AudioSegment.from_file(io.BytesIO(data), format=fmt)
-                wav_buf = io.BytesIO()
-                seg.export(wav_buf, format='wav')
-                wav_buf.seek(0)
-                audio_data = wav_buf.read()
-            except Exception:
-                return ''
-        with sr.AudioFile(io.BytesIO(audio_data)) as source:
-            audio = recognizer.record(source)
-        return recognizer.recognize_google(audio)
-    except Exception:
-        return ''
 
 
 def proc_file(fs):
@@ -500,9 +509,6 @@ def proc_file(fs):
             try: return data.decode(enc), None
             except: pass
         return data.decode('utf-8', errors='ignore'), None
-    if fn.endswith(('.mp3', '.wav', '.ogg', '.m4a', '.webm', '.flac', '.aac')):
-        t = ext_audio(data, fs.filename)
-        return (t, None) if t.strip() else (None, 'Could not transcribe audio — ensure the file has clear speech.')
     return None, f'Unsupported file type: {fn.rsplit(".", 1)[-1] if "." in fn else "unknown"}'
 
 # ─── ADAPTIVE LEARNING HELPERS ────────────────────────────────────────────────
@@ -588,6 +594,41 @@ def daily_status():
         'streak':         current_user.streak,
     })
 
+@app.route('/reviews', methods=['GET'])
+def get_reviews():
+    reviews = Review.query.order_by(Review.created_at.desc()).limit(50).all()
+    avg = round(sum(r.stars for r in reviews) / len(reviews), 1) if reviews else 0.0
+    return jsonify({
+        'reviews': [r.to_dict() for r in reviews],
+        'count':   len(reviews),
+        'average': avg,
+    })
+
+
+@app.route('/reviews', methods=['POST'])
+@login_required
+def post_review():
+    d       = request.get_json() or {}
+    stars   = int(d.get('stars', 0))
+    comment = (d.get('comment') or '').strip()
+    if stars < 1 or stars > 5:
+        return jsonify({'error': 'Stars must be between 1 and 5.'}), 400
+    if len(comment) < 5:
+        return jsonify({'error': 'Please write at least a few words.'}), 400
+    if len(comment) > 500:
+        return jsonify({'error': 'Review must be under 500 characters.'}), 400
+    existing = Review.query.filter_by(user_id=current_user.id).first()
+    if existing:
+        existing.stars      = stars
+        existing.comment    = comment
+        existing.created_at = datetime.datetime.utcnow()
+    else:
+        existing = Review(user_id=current_user.id, stars=stars, comment=comment)
+        db.session.add(existing)
+    db.session.commit()
+    return jsonify({'review': existing.to_dict(), 'message': 'Review saved!'})
+
+
 @app.route('/stats')
 def stats():
     # Always count real users directly from the users table — never fake numbers
@@ -596,10 +637,12 @@ def stats():
     s = SystemStats.query.first()
     total_quizzes = s.total_quizzes if s else 0
     total_files   = s.total_files   if s else 0
+    total_downloads = s.total_downloads if s else 0
     return jsonify({
-        'users':   real_users,
-        'quizzes': total_quizzes,
-        'files':   total_files,
+        'users':     real_users,
+        'quizzes':   total_quizzes,
+        'files':     total_files,
+        'downloads': total_downloads,
     })
 
 # ── Legal pages ───────────────────────────────────────────────────────────────
@@ -687,13 +730,43 @@ def google_auth():
 
 @app.route('/app/download')
 def app_download():
-    """Serve the Android APK for download."""
-    return send_from_directory(
-        os.path.join(app.root_path, 'static'),
-        'Brainliant.apk',
-        as_attachment=True,
-        download_name='Brainliant.apk'
-    )
+    """
+    Serve the Android APK.
+    Priority:
+      1. If APK_DOWNLOAD_URL env var is set → redirect there (Google Drive, Dropbox, etc.)
+      2. If static/Brainliant.apk exists locally → serve it directly
+      3. Otherwise → return a clear 404 with instructions
+    """
+    # Track every download click
+    try:
+        s = SystemStats.query.first()
+        if s:
+            s.total_downloads = (s.total_downloads or 0) + 1
+            db.session.commit()
+    except Exception:
+        pass
+
+    # Option 1: external URL (recommended for Render — Render's filesystem is ephemeral)
+    if APK_DOWNLOAD_URL:
+        return redirect(APK_DOWNLOAD_URL, code=302)
+
+    # Option 2: file bundled in repo
+    apk_path = os.path.join(app.root_path, 'static', 'Brainliant.apk')
+    if os.path.exists(apk_path):
+        return send_from_directory(
+            os.path.join(app.root_path, 'static'),
+            'Brainliant.apk',
+            as_attachment=True,
+            download_name='Brainliant.apk',
+            mimetype='application/vnd.android.package-archive'
+        )
+
+    # Option 3: not configured — tell the developer clearly what to do
+    return jsonify({
+        'error': 'APK not available.',
+        'fix':   'Set APK_DOWNLOAD_URL environment variable in Render to a direct download link '
+                 '(Google Drive, Dropbox, etc.), or commit static/Brainliant.apk to your Git repo.'
+    }), 404
 
 
 @app.route('/auth/check')
@@ -926,20 +999,6 @@ def upload_extract():
                         'streak': current_user.streak,
                     }})
 
-@app.route('/ai/transcribe-audio', methods=['POST'])
-@login_required
-def transcribe_audio():
-    """Accept audio file upload, return transcribed text for quiz/note generation."""
-    if 'audio' not in request.files:
-        return jsonify({'error': 'No audio file received.'}), 400
-    f = request.files['audio']
-    if not f or not f.filename:
-        return jsonify({'error': 'Empty audio file.'}), 400
-    data = f.read()
-    text = ext_audio(data, f.filename)
-    if not text.strip():
-        return jsonify({'error': 'Could not transcribe audio — ensure file has clear speech and ffmpeg is installed.'}), 422
-    return jsonify({'text': text, 'char_count': len(text)})
 
 
 # ── AI Routes ─────────────────────────────────────────────────────────────────
